@@ -38,19 +38,10 @@ ias_experience <- read_csv("ias-experience.csv")
 ```
 
 ```{r}
-Dataverse_merged_dta <- read_stata("BhavnaniLeeAJPSRep1")
-#Betrand_scores_dta <- read_stata ("scores.dta")
-#Betrand_direct_dta <- read_stata ("direct.dta")
-#Betrand_descriptive_dta <- read_stata ("descriptive.dta")
-#Betrand_postings_dta <- read_stata ("postings.dta")
-#Betrand_officers_dta <- read_stata ("officers.dta")
-```
-```{r}
 newtheme <- theme_bw() +
   theme(panel.border = element_rect(color = "darkgrey", size = 2), 
         panel.grid.major = element_blank(), legend.position = "bottom")
 ```
-
 
 ```{r}
 #Wrangling ias_profile and ias_experience
@@ -249,13 +240,14 @@ ifelse(Last_Category_of_Experience == "Water Resources", "Others",
 ifelse(Last_Category_of_Experience == "Women & Child Dev", "Soft",
 ifelse(Last_Category_of_Experience == "Youth Affairs & Sports", "Soft", NA)))))))))))))))))))))))))))))))))))))))))))))))
 
-#Source of Recruitment
+#Source of Recruitment for ias_profile
 ias_profile <- ias_profile %>% 
 mutate (Assigned_SOR = ifelse (Source_of_Recruitment == "By Promotion from State Civil Service", "By Promotion from State Civil Service", 
 ifelse(Source_of_Recruitment == "Direct Recruitment", "Direct Recruitment", 
 ifelse(Source_of_Recruitment == "SCS", "By Promotion from State Civil Service", 
 ifelse(Source_of_Recruitment == "RR", "Direct Recruitment",
 ifelse(Source_of_Recruitment == "By Selection", "By Promotion from State Civil Service", NA)))))) 
+
 
 #Assigning Reference Values to last positions (ias_profile)
 ias_profile <- ias_profile %>% 
@@ -364,7 +356,6 @@ mutate ("Promotees %"= `Promotees (freq)`/`Total no. of Officers`) %>%
 mutate (`Direct Recruits %`= round(`Direct Recruits %`*100,2)) %>% 
 mutate (`Promotees %`= round(`Promotees %`*100,2)) %>% 
 arrange (`Cadre`)
-
 
 Cadre %>%
   kbl(caption = "Distribution of all officers by Cadre and Source of Recruitment")%>%
@@ -595,6 +586,25 @@ rename ("Nature of the Department" = Var1) %>%
 rename ("No. of Observations (Frequency)" = Freq) %>% 
 arrange (`Nature of the Department`) %>% 
 mutate (Percentage = round(`No. of Observations (Frequency)`*0.03299, 2))  
+```
+
+```{r}
+#Merging tables (ias_profile & ias_combined)
+ias_SOR <- ias_profile %>% 
+dplyr::select (ID, Assigned_SOR, Date_of_Joining)
+
+ias_combined <- merge (ias_experience, ias_SOR, by.x = "ID", by.y = "ID", incomparables = NA, all = TRUE) 
+
+#Mapping unique IDs
+ID_experience <- as.data.frame(table(ias_experience$ID))
+ID_profile <- as.data.frame(table(ias_profile$ID))
+
+#Subsetting ias_combined
+DR_fp <- ias_combined %>% 
+filter (Assigned_SOR == "Direct Recruitment")
+
+SCS_fp <- ias_combined %>% 
+filter (Assigned_SOR == "By Promotion from State Civil Service")
 ```
 
 I. Aggregate graph: Last Positions (from ias_profile dataset)
@@ -1207,6 +1217,7 @@ filter (Allotment_age > 10 | Allotment_age < 40)
 mean_SCS <- round(mean(subset_age_SCS$Allotment_age),2) #48.66
 mean_DR <-  round(mean(subset_age_DR$Allotment_age),2) #27.04
 
+ round(mean(subset_age_DR$Allotment_age),2)
 #Yearly averages for Direct Recruits
 Yearwise_average_DR <- as.data.frame(table(subset_age_DR$Allotment_Year)) %>% 
 rename (Allotment_Year = Var1)
@@ -1404,5 +1415,270 @@ prop_allotment %>%
   kbl(caption = "Distribution of all officers by Source of Recruitment and Allotment Year")%>%
   kable_classic(full_width = F, html_font = "Cambria", font_size = 15) %>% 
   footnote(number = c("Derived from the 'TCPD-Bureaucrats of India' Dataset", "Sample: Total no. of officers hired between 1951 and 2020"))
+```
+
+
+```{r, echo = FALSE, fig.height=8,fig.width=10, warning=FALSE}
+
+#First Positions (Direct Recruits)
+fp__DR <- DR_fp %>% 
+group_by(ID) %>% 
+summarize (P = Positions[max(Reference_Value)])
+
+firstpositions_DR <- as.data.frame(table(fp__DR$P)) %>% 
+rename (Frequency = Freq) %>% 
+rename (Positions = Var1) %>% 
+add_row(Positions ="Cabinet Secretary", Frequency = 0) %>% 
+add_row(Positions ="Above Secretary Level", Frequency = 0) 
+
+mean_ASL_DR_fp <- round(firstpositions_DR$Frequency[firstpositions_DR$Positions == "Above Secretary Level"]*0.01707, 2)
+mean_AS_DR_fp <- round(firstpositions_DR$Frequency[firstpositions_DR$Positions == "Additional Secretary"]*0.01707, 2)
+mean_CS_DR_fp <- round(firstpositions_DR$Frequency[firstpositions_DR$Positions == "Cabinet Secretary"]*0.01707, 2)
+mean_DS_DR_fp <- round(firstpositions_DR$Frequency[firstpositions_DR$Positions == "Deputy Secretary"]*0.01707, 2)
+mean_DR_DR_fp <- round(firstpositions_DR$Frequency[firstpositions_DR$Positions == "Director"]*0.01707, 2)
+mean_JS_DR_fp <- round(firstpositions_DR$Frequency[firstpositions_DR$Positions == "Joint Secretary"]*0.01707, 2)
+mean_jsc_DR_fp <- round(firstpositions_DR$Frequency[firstpositions_DR$Positions == "Junior Scale"]*0.01707, 2)
+mean_S_DR_fp <- round(firstpositions_DR$Frequency[firstpositions_DR$Positions == "Secretary"]*0.01707, 2)
+mean_US_DR_fp <- round(firstpositions_DR$Frequency[firstpositions_DR$Positions == "Under Secretary"]*0.01707, 2)
+
+fp_DR_full_plot <- c(mean_ASL_DR_fp, mean_AS_DR_fp, mean_CS_DR_fp, mean_DS_DR_fp, mean_DR_DR_fp, mean_JS_DR_fp, mean_jsc_DR_fp, mean_S_DR_fp, mean_US_DR_fp)
+first_position_agg_lable <- c("Above Secretary Level", "Additional Secretary" , "Cabinet Secretary", "Deputy Secretary", "Director", "Joint Secretary", "Junior Scale", "Secretary", "Under Secretary") 
+fp_DR_plot_dta <- data.frame(fp_DR_full_plot, first_position_agg_lable) 
+fp_DR_plot_dta$wrapped_labels = str_wrap(first_position_agg_lable, width = 50)
+fp_DR_plot_dta$first_position_agg_lable <- factor(fp_DR_plot_dta$first_position_agg_lable,
+                                             levels = c("Junior Scale", "Under Secretary", "Deputy Secretary", "Director", "Joint Secretary", "Additional Secretary", "Secretary", "Cabinet Secretary", "Above Secretary Level"))
+fp_DR_full_plot <- ggplot(fp_DR_plot_dta, aes(x=first_position_agg_lable, y=fp_DR_full_plot, fill = first_position_agg_lable)) +
+  geom_bar(stat="identity", width= 0.5, show.legend = FALSE) + 
+  geom_text(aes(label=paste0(sprintf("%0.2f", fp_DR_full_plot),"%"), vjust=-0.3), size=3.5) +
+  scale_y_continuous(limits = c(0,60)) +
+  scale_x_discrete(labels = function(first_position_agg_lable) str_wrap(first_position_agg_lable, width = 10)) +
+  scale_fill_brewer(palette="YlGnBu") +
+  labs(x="",y="Percent", subtitle = "First Positions: Officers hired through Direct Recruitment (1951-2020)") +
+  newtheme
+
+fp_DR_full_plot
+
+#First Positions (Promotees)
+fp__SCS <- SCS_fp %>% 
+group_by(ID) %>% 
+summarize (P = Positions[max(Reference_Value)])
+
+firstpositions_SCS <- as.data.frame(table(fp__SCS$P)) %>% 
+rename (Frequency = Freq) %>% 
+rename (Positions = Var1) %>% 
+add_row(Positions ="Cabinet Secretary", Frequency = 0) %>% 
+add_row(Positions ="Above Secretary Level", Frequency = 0) 
+
+mean_ASL_SCS_fp <- round(firstpositions_SCS$Frequency[firstpositions_SCS$Positions == "Above Secretary Level"]*0.02302, 2)
+mean_AS_SCS_fp <- round(firstpositions_SCS$Frequency[firstpositions_SCS$Positions == "Additional Secretary"]*0.02302, 2)
+mean_CS_SCS_fp <- round(firstpositions_SCS$Frequency[firstpositions_SCS$Positions == "Cabinet Secretary"]*0.02302, 2)
+mean_DS_SCS_fp <- round(firstpositions_SCS$Frequency[firstpositions_SCS$Positions == "Deputy Secretary"]*0.02302, 2)
+mean_DR_SCS_fp <- round(firstpositions_SCS$Frequency[firstpositions_SCS$Positions == "Director"]*0.02302, 2)
+mean_JS_SCS_fp <- round(firstpositions_SCS$Frequency[firstpositions_SCS$Positions == "Joint Secretary"]*0.02302, 2)
+mean_jsc_SCS_fp <- round(firstpositions_SCS$Frequency[firstpositions_SCS$Positions == "Junior Scale"]*0.02302, 2)
+mean_S_SCS_fp <- round(firstpositions_SCS$Frequency[firstpositions_SCS$Positions == "Secretary"]*0.02302, 2)
+mean_US_SCS_fp <- round(firstpositions_SCS$Frequency[firstpositions_SCS$Positions == "Under Secretary"]*0.02302, 2)
+
+fp_SCS_full_plot <- c(mean_ASL_SCS_fp, mean_AS_SCS_fp, mean_CS_SCS_fp, mean_DS_SCS_fp, mean_DR_SCS_fp, mean_JS_SCS_fp, mean_jsc_SCS_fp, mean_S_SCS_fp, mean_US_SCS_fp)
+first_position_agg_lable <- c("Above Secretary Level", "Additional Secretary" , "Cabinet Secretary", "Deputy Secretary", "Director", "Joint Secretary", "Junior Scale", "Secretary", "Under Secretary") 
+fp_SCS_plot_dta <- data.frame(fp_SCS_full_plot, first_position_agg_lable) 
+fp_SCS_plot_dta$wrapped_labels = str_wrap(first_position_agg_lable, width = 50)
+fp_SCS_plot_dta$first_position_agg_lable <- factor(fp_SCS_plot_dta$first_position_agg_lable,
+                                             levels = c("Junior Scale", "Under Secretary", "Deputy Secretary", "Director", "Joint Secretary", "Additional Secretary", "Secretary", "Cabinet Secretary", "Above Secretary Level"))
+fp_SCS_full_plot <- ggplot(fp_SCS_plot_dta, aes(x=first_position_agg_lable, y=fp_SCS_full_plot, fill = first_position_agg_lable)) +
+  geom_bar(stat="identity", width= 0.5, show.legend = FALSE) + 
+  geom_text(aes(label=paste0(sprintf("%0.2f", fp_SCS_full_plot),"%"), vjust=-0.3), size=3.5) +
+  scale_y_continuous(limits = c(0,60)) +
+  scale_x_discrete(labels = function(first_position_agg_lable) str_wrap(first_position_agg_lable, width = 10)) +
+  scale_fill_brewer(palette="YlGnBu") +
+  labs(x="",y="Percent", subtitle = "First Positions: Officers hired through promotion from SCS (1951-2020)") +
+  newtheme
+
+fp_SCS_full_plot
+
+grid.newpage()
+grid.draw(rbind(ggplotGrob(fp_DR_full_plot), ggplotGrob(fp_SCS_full_plot), size = "last"))
+
+```
+```{r}
+#Age at the time of Allotment (Tamil Nadu, Andhra Pradesh, Assam-Mehgalaya, Bihar)
+
+#Tamil Nadu
+
+subset_age_tn_SCS <- ias_profile %>% 
+filter (Assigned_SOR == "By Promotion from State Civil Service") %>% 
+filter (Allotment_age > 10) %>% 
+filter (Cadre == "Tamil Nadu")
+
+subset_age_tn_DR <- ias_profile %>% 
+filter (Assigned_SOR == "Direct Recruitment") %>% 
+filter (Allotment_age > 10 | Allotment_age < 40) %>% 
+filter (Cadre == "Tamil Nadu")
+
+
+#Yearly averages for Direct Recruits
+Yearwise_average_tn_DR <- as.data.frame(table(subset_age_tn_DR$Allotment_Year)) %>% 
+rename (Allotment_Year = Var1)
+
+#Using nested-ifelse to calculate average age for each year (Direct Recruits)
+Yearwise_average_tn_DR <- Yearwise_average_tn_DR %>% 
+mutate (Averages = ifelse(Yearwise_average_tn_DR$Allotment_Year == 1951, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1951]), 
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1952, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1952]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1953, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1953]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1954, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1954]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1955, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1955]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1956, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1956]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1957, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1957]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1958, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1958]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1959, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1959]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1960, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1960]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1961, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1961]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1962, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1962]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1963, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1963]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1964, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1964]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1965, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1965]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1966, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1966]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1967, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1967]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1968, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1968]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1969, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1969]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1970, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1970]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1971, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1971]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1972, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1972]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1973, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1973]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1974, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1974]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1975, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1975]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1976, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1976]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1977, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1977]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1978, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1978]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1979, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1979]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1980, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1980]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1981, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1981]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1982, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1982]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1983, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1983]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1984, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1984]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1985, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1985]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1986, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1986]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1987, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1987]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1988, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1988]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1989, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1989]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1990, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1990]), 0)))))))))))))))))))))))))))))))))))))))))
+
+Yearwise_average_tn_DR <- Yearwise_average_tn_DR %>% 
+mutate (Averages = ifelse(Yearwise_average_tn_DR$Allotment_Year == 1991, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1991]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1992, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1992]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1993, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1993]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1994, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1994]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1995, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1995]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1996, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1996]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1997, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1997]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1998, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1998]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 1999, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 1999]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 2000, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 2000]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 2001, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 2001]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 2002, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 2002]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 2003, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 2003]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 2004, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 2004]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 2005, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 2005]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 2006, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 2006]), ifelse(Yearwise_average_tn_DR$Allotment_Year == 2007, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 2007]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 2008, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 2008]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 2009, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 2009]), ifelse(Yearwise_average_tn_DR$Allotment_Year == 2010, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 2010]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 2011, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 2011]), ifelse(Yearwise_average_tn_DR$Allotment_Year == 2012, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 2012]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 2013, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 2013]),
+ifelse(Yearwise_average_tn_DR$Allotment_Year == 2014, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 2014]), ifelse(Yearwise_average_tn_DR$Allotment_Year == 2015, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 2015]), ifelse(Yearwise_average_tn_DR$Allotment_Year == 2016, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 2016]), ifelse(Yearwise_average_tn_DR$Allotment_Year == 2017, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 2017]), ifelse(Yearwise_average_tn_DR$Allotment_Year == 2018, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 2018]), ifelse(Yearwise_average_tn_DR$Allotment_Year == 2019, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 2019]), ifelse(Yearwise_average_tn_DR$Allotment_Year == 2020, mean(subset_age_tn_DR$Allotment_age[subset_age_tn_DR$Allotment_Year == 2020]), Averages)))))))))))))))))))))))))))))))
+
+#Using nested-ifelse to calculate average age for each year (Direct Recruits)
+Yearwise_average_tn_SCS <- as.data.frame(table(subset_age_tn_SCS$Allotment_Year)) %>% 
+rename (Allotment_Year = Var1)
+
+Yearwise_average_tn_SCS <- Yearwise_average_tn_SCS %>% 
+mutate (Averages = ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1951, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1951]), 
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1952, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1952]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1953, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1953]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1954, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1954]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1955, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1955]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1956, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1956]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1957, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1957]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1958, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1958]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1959, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1959]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1960, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1960]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1961, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1961]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1962, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1962]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1963, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1963]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1964, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1964]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1965, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1965]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1966, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1966]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1967, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1967]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1968, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1968]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1969, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1969]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1970, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1970]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1971, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1971]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1972, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1972]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1973, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1973]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1974, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1974]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1975, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1975]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1976, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1976]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1977, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1977]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1978, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1978]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1979, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1979]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1980, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1980]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1981, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1981]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1982, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1982]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1983, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1983]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1984, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1984]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1985, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1985]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1986, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1986]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1987, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1987]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1988, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1988]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1989, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1989]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1990, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1990]), 0)))))))))))))))))))))))))))))))))))))))))
+
+Yearwise_average_tn_SCS <- Yearwise_average_tn_SCS %>% 
+mutate (Averages = ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1991, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1991]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1992, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1992]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1993, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1993]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1994, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1994]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1995, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1995]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1996, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1996]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1997, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1997]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1998, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1998]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 1999, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 1999]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 2000, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 2000]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 2001, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 2001]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 2002, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 2002]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 2003, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 2003]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 2004, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 2004]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 2005, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 2005]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 2006, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 2006]),      ifelse(Yearwise_average_tn_SCS$Allotment_Year == 2007, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 2007]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 2008, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 2008]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 2009, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 2009]),      ifelse(Yearwise_average_tn_SCS$Allotment_Year == 2010, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 2010]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 2011, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 2011]),      ifelse(Yearwise_average_tn_SCS$Allotment_Year == 2012, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 2012]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 2013, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 2013]),
+ifelse(Yearwise_average_tn_SCS$Allotment_Year == 2014, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 2014]),      ifelse(Yearwise_average_tn_SCS$Allotment_Year == 2015, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 2015]),      ifelse(Yearwise_average_tn_SCS$Allotment_Year == 2016, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 2016]),      ifelse(Yearwise_average_tn_SCS$Allotment_Year == 2017, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 2017]),      ifelse(Yearwise_average_tn_SCS$Allotment_Year == 2018, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 2018]),      ifelse(Yearwise_average_tn_SCS$Allotment_Year == 2019, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 2019]),      ifelse(Yearwise_average_tn_SCS$Allotment_Year == 2020, mean(subset_age_tn_SCS$Allotment_age[subset_age_tn_SCS$Allotment_Year == 2020]), Averages)))))))))))))))))))))))))))))))
+
+Yearwise_average_tn_DR$Allotment_Year = as.numeric(levels(Yearwise_average_tn_DR$Allotment_Year))
+
+Yearwise_average_tn_SCS$Allotment_Year = as.numeric(levels(Yearwise_average_tn_SCS$Allotment_Year))
+
+plot_age_allotment_tn <- ggplot() + geom_point(data = Yearwise_average_tn_DR, aes(y = Averages, x = Allotment_Year, group = 1), colour = "red") + 
+geom_point(data = Yearwise_average_tn_SCS, aes(y = Averages, x = Allotment_Year, group = 1), colour = "green") +
+scale_y_continuous(limits = c(20,65)) +
+labs( subtitle = "Age at the time of Allotment: Tamil Nadu") +
+geom_smooth(data = Yearwise_average_tn_DR, colour = "red", method = "loess", aes(x = Allotment_Year, y =  Averages)) +
+geom_smooth(data = Yearwise_average_tn_SCS, colour = "green", method = "loess", aes(x = Allotment_Year, y =  Averages)) +
+newtheme
+
+plot_age_allotment_tn
+
+#Ask Vaibhav
+bihar_age_SCS <- ias_profile %>% 
+filter (Cadre == "Bihar") %>% 
+filter (Assigned_SOR == "By Promotion from State Civil Service") %>% 
+filter (Allotment_age > 10)
+
+age_bihar_SCS <- bihar_age_SCS %>% 
+group_by(Allotment_Year) %>% 
+summarize (Averages = mean(bihar_age_SCS$Allotment_age)) %>% 
+ungroup()
+
 ```
 
